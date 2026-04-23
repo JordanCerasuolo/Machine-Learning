@@ -211,6 +211,10 @@ class DigitClassificationModel(Module):
         input_size = 28 * 28
         output_size = 10
         "*** YOUR CODE HERE ***"
+        hidden_size = 256
+        self.layer1 = Linear(input_size, hidden_size)
+        self.layer2 = Linear(hidden_size, hidden_size)
+        self.layer3 = Linear(hidden_size, output_size)
 
 
 
@@ -230,6 +234,9 @@ class DigitClassificationModel(Module):
                 (also called logits)
         """
         """ YOUR CODE HERE """
+        x = relu(self.layer1(x))
+        x = relu(self.layer2(x))
+        return self.layer3(x)
 
  
 
@@ -247,6 +254,8 @@ class DigitClassificationModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        predictions = self.run(x)
+        return cross_entropy(predictions, y)
 
     
         
@@ -256,6 +265,20 @@ class DigitClassificationModel(Module):
         Trains the model.
         """
         """ YOUR CODE HERE """
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+        while True:
+            for batch in dataloader:
+                optimizer.zero_grad()
+                loss = self.get_loss(batch['x'], batch['label'])
+                loss.backward()
+                optimizer.step()
+
+            # Stop when validation accuracy is high enough
+            val_acc = dataset.get_validation_accuracy()
+            if val_acc >= 0.975:
+                break
 
 
 
@@ -276,6 +299,11 @@ class LanguageIDModel(Module):
         self.languages = ["English", "Spanish", "Finnish", "Dutch", "Polish"]
         super(LanguageIDModel, self).__init__()
         "*** YOUR CODE HERE ***"
+        hidden_size = 300
+        self.W_x = Linear(self.num_chars, hidden_size)
+        self.W_hidden = Linear(hidden_size, hidden_size)
+        self.output1 = Linear(hidden_size, hidden_size)
+        self.output2 = Linear(hidden_size, len(self.languages))
 
 
     def run(self, xs):
@@ -308,7 +336,11 @@ class LanguageIDModel(Module):
                 (also called logits)
         """
         "*** YOUR CODE HERE ***"
-
+        h = relu(self.W_x(xs[0]))
+        for x in xs[1:]:
+            h = relu(self.W_x(x) + self.W_hidden(h))
+        h = relu(self.output1(h))
+        return self.output2(h)
     
     def get_loss(self, xs, y):
         """
@@ -325,6 +357,8 @@ class LanguageIDModel(Module):
         Returns: a loss node
         """
         "*** YOUR CODE HERE ***"
+        predictions = self.run(xs)
+        return cross_entropy(predictions, y)
         
 
     def train(self, dataset):
@@ -342,6 +376,20 @@ class LanguageIDModel(Module):
         For more information, look at the pytorch documentation of torch.movedim()
         """
         "*** YOUR CODE HERE ***"
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+
+        while True:
+            dataloader = DataLoader(dataset, batch_size=32, shuffle=True)
+            for batch in dataloader:
+                x = movedim(batch['x'], 0, 1)
+                xs = list(x)
+                optimizer.zero_grad()
+                loss = self.get_loss(xs, batch['label'])
+                loss.backward()
+                optimizer.step()
+            val_acc = dataset.get_validation_accuracy()
+            if val_acc >= 0.83:
+                break
 
         
 
