@@ -38,7 +38,8 @@ class PerceptronModel(Module):
         super(PerceptronModel, self).__init__()
         
         "*** YOUR CODE HERE ***"
-        
+        super(PerceptronModel, self).__init__()
+        self.w = Parameter(ones(1, dimensions))
 
     def get_weights(self):
         """
@@ -57,7 +58,9 @@ class PerceptronModel(Module):
         The pytorch function `tensordot` may be helpful here.
         """
         "*** YOUR CODE HERE ***"
-        
+        x = torch.matmul(x, self.w.T) 
+        return x
+
 
     def get_prediction(self, x):
         """
@@ -66,7 +69,11 @@ class PerceptronModel(Module):
         Returns: 1 or -1
         """
         "*** YOUR CODE HERE ***"
-
+        x = self.run(x).item() 
+        if x >= 0: 
+            return 1 
+        else: 
+            return -1
 
 
     def train(self, dataset):
@@ -82,6 +89,26 @@ class PerceptronModel(Module):
             dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
             "*** YOUR CODE HERE ***"
 
+        convergence = False 
+        mistakes = 0 
+        while convergence == False: 
+            for sample in dataloader: 
+                direction = 0
+                x = sample['x'] 
+                label = sample['label'] 
+                pred = self.get_prediction(x) 
+                if pred == label: 
+                    continue 
+                else: 
+                    if label == 1: 
+                        direction = 1 
+                    else: 
+                        direction = -1
+                        mistakes = mistakes + 1 
+                self.w.data = self.w.data + (direction * x)
+            if mistakes == 0: 
+                convergence = True
+            mistakes = 0
 
 
 class RegressionModel(Module):
@@ -95,7 +122,9 @@ class RegressionModel(Module):
         "*** YOUR CODE HERE ***"
         super().__init__()
 
-
+        self.layer1 = torch.nn.Linear(1, 64) 
+        self.layer2 = torch.nn.Linear(64, 64)
+        self.layer3 = torch.nn.Linear(64, 1)
 
     def forward(self, x):
         """
@@ -107,6 +136,7 @@ class RegressionModel(Module):
             A node with shape (batch_size x 1) containing predicted y-values
         """
         "*** YOUR CODE HERE ***"
+        return self.layer3(torch.relu(self.layer2(torch.relu(self.layer1(x)))))
 
     
     def get_loss(self, x, y):
@@ -120,7 +150,9 @@ class RegressionModel(Module):
         Returns: a tensor of size 1 containing the loss
         """
         "*** YOUR CODE HERE ***"
- 
+         predictions = self.forward(x)
+        loss = mse_loss(predictions, y)
+        return loss
         
 
     def train(self, dataset):
@@ -140,7 +172,19 @@ class RegressionModel(Module):
         "*** YOUR CODE HERE ***"
 
             
-
+        with no_grad():
+            dataloader = DataLoader(dataset, batch_size=1, shuffle=True)
+            "*** YOUR CODE HERE ***"
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        for BIGTIME in range(100):
+            for sample in dataloader:
+                x = sample['x']
+                label = sample['label']
+                optimizer.zero_grad()
+                output = self(x)
+                loss = self.get_loss(x, label)
+                loss.backward()
+                optimizer.step()
 
 
 
