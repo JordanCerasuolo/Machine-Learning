@@ -150,7 +150,7 @@ class RegressionModel(Module):
         Returns: a tensor of size 1 containing the loss
         """
         "*** YOUR CODE HERE ***"
-         predictions = self.forward(x)
+        predictions = self.forward(x)
         loss = mse_loss(predictions, y)
         return loss
         
@@ -409,7 +409,24 @@ def Convolve(input: tensor, weight: tensor):
     input_tensor_dimensions = input.shape
     weight_dimensions = weight.shape
     Output_Tensor = tensor(())
+    
     "*** YOUR CODE HERE ***"
+
+    weightHeight, weightWidth = weight_dimensions
+    inputHeight, inputWidth = input_tensor_dimensions
+
+    # output aij = dotproduct of (weight tensor * input matrix from tensor[y,x], height, width of weights)
+
+    tList = []
+    for i in range(inputHeight-weightHeight+1):
+        tRow = []
+        for j in range(inputWidth-weightWidth+1):
+            tRow.append(tensordot(input[i:i+weightHeight, j:j+weightWidth],weight,2))
+        tList.append(stack(tRow))
+            
+    Output_Tensor = stack(tList)
+
+
 
     
     "*** End Code ***"
@@ -437,6 +454,14 @@ class DigitConvolutionalModel(Module):
 
         self.convolution_weights = Parameter(ones((3, 3)))
         """ YOUR CODE HERE """
+        print(self.convolution_weights.shape)
+
+        input_size = 26*26
+        hidden_size = 256
+        self.layer1 = Linear(input_size, hidden_size)
+        self.layer2 = Linear(hidden_size, hidden_size)
+        self.layer3 = Linear(hidden_size, output_size)
+
 
 
 
@@ -453,6 +478,9 @@ class DigitConvolutionalModel(Module):
         x = stack(list(map(lambda sample: Convolve(sample, self.convolution_weights), x)))
         x = x.flatten(start_dim=1)
         """ YOUR CODE HERE """
+        x = relu(self.layer1(x))
+        x = relu(self.layer2(x))
+        return self.layer3(x)
 
 
     def get_loss(self, x, y):
@@ -469,6 +497,8 @@ class DigitConvolutionalModel(Module):
         Returns: a loss tensor
         """
         """ YOUR CODE HERE """
+        predictions = self.run(x)
+        return cross_entropy(predictions, y)
 
      
         
@@ -478,6 +508,20 @@ class DigitConvolutionalModel(Module):
         Trains the model.
         """
         """ YOUR CODE HERE """
+        optimizer = optim.Adam(self.parameters(), lr=0.001)
+        dataloader = DataLoader(dataset, batch_size=64, shuffle=True)
+
+        while True:
+            for batch in dataloader:
+                optimizer.zero_grad()
+                loss = self.get_loss(batch['x'], batch['label'])
+                loss.backward()
+                optimizer.step()
+
+            # Stop when validation accuracy is high enough
+            val_acc = dataset.get_validation_accuracy()
+            if val_acc >= 0.8:
+                break
 
 
 
@@ -517,5 +561,15 @@ class Attention(Module):
         B, T, C = input.size()
 
         """YOUR CODE HERE"""
+        q = self.q_layer(input) # could not figure this one out.
+        k = self.k_layer(input)
+        v = self.v_layer(input)
+    
+        M = torch.matmul(q, k.transpose(-2, -1)) / (C ** 0.5)
+        M = M.masked_fill(self.mask[:,:,:T,:T] == 0, float('-inf'))[0]
+        M = softmax(M, dim=-1)
+        out = torch.matmul(M, v)
+    
+        return out
 
      
